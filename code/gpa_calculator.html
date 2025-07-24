@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPA Calculator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom Styles -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Simple transition for smooth UI changes */
+        .list-item {
+            transition: all 0.3s ease-in-out;
+            overflow: hidden;
+        }
+        /* Animation for result display */
+        @keyframes pop-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .gpa-result-animation {
+            animation: pop-in 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Main Container -->
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">GPA Calculator</h1>
+            <p class="text-gray-600 mt-2">Enter your courses to calculate your Grade Point Average.</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <!-- Left Column: Input and Results -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold text-gray-700 border-b pb-3 mb-6">Add a New Course</h2>
+                
+                <!-- Input Form -->
+                <form id="course-form" class="space-y-4">
+                    <div>
+                        <label for="course-name" class="block text-sm font-medium text-gray-600">Course Name</label>
+                        <input type="text" id="course-name" placeholder="e.g., Computer Science 101" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="credits" class="block text-sm font-medium text-gray-600">Credits</label>
+                            <input type="number" id="credits" placeholder="e.g., 3" min="0.5" step="0.5" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label for="grade" class="block text-sm font-medium text-gray-600">Grade</label>
+                            <select id="grade" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="10.0">A+</option>
+                                <option value="9.0">A</option>
+                                <option value="8.0">B+</option>
+                                <option value="7.0">B</option>
+                                <option value="6.0">C+</option>
+                                <option value="5.0">C</option>
+                                <option value="4.0">D+</option>
+                                <option value="3.0">D</option>        
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                        Add Course
+                    </button>
+                    <div id="error-message" class="text-red-500 text-sm mt-2"></div>
+                </form>
+
+                <!-- GPA Result Display -->
+                <div class="mt-8 text-center">
+                    <h3 class="text-xl font-semibold text-gray-700">Your Final GPA</h3>
+                    <div id="gpa-result" class="text-6xl font-bold text-indigo-600 mt-2">0.00</div>
+                    <div class="flex justify-center space-x-4 mt-4">
+                         <button id="reset-btn" class="w-full bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-colors">
+                            Reset All
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Course List -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold text-gray-700 border-b pb-3 mb-4">Your Courses</h2>
+                <div id="course-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    <!-- Courses will be dynamically added here -->
+                    <p id="empty-list-msg" class="text-gray-500 text-center py-8">Your course list is empty.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element References ---
+            const courseForm = document.getElementById('course-form');
+            const courseNameInput = document.getElementById('course-name');
+            const creditsInput = document.getElementById('credits');
+            const gradeSelect = document.getElementById('grade');
+            const courseListDiv = document.getElementById('course-list');
+            const gpaResultDiv = document.getElementById('gpa-result');
+            const resetBtn = document.getElementById('reset-btn');
+            const errorMessageDiv = document.getElementById('error-message');
+            const emptyListMsg = document.getElementById('empty-list-msg');
+
+            // --- State Management ---
+            let courses = [];
+
+            // --- Grade to Point Mapping (FIXED) ---
+            // This object now correctly maps the 10-point scale values to their letter grades.
+            const gradePointToLetter = {
+                '10.0': 'A+',
+                '9.0': 'A',
+                '8.0': 'B+',
+                '7.0': 'B',
+                '6.0': 'C+',
+                '5.0': 'C',
+                '4.0': 'D+',
+                '3.0': 'D'
+            };
+
+            // --- Core Functions ---
+
+            /**
+             * Renders the list of courses in the UI.
+             */
+            function renderCourses() {
+                courseListDiv.innerHTML = ''; // Clear the current list
+
+                if (courses.length === 0) {
+                    courseListDiv.appendChild(emptyListMsg);
+                    emptyListMsg.style.display = 'block';
+                } else {
+                    emptyListMsg.style.display = 'none';
+                    courses.forEach((course, index) => {
+                        const courseElement = document.createElement('div');
+                        courseElement.className = 'list-item flex items-center justify-between bg-gray-100 p-3 rounded-lg';
+                        // This line now works correctly because gradePointToLetter has the right keys.
+                        courseElement.innerHTML = `
+                            <div>
+                                <p class="font-semibold text-gray-800">${course.name}</p>
+                                <p class="text-sm text-gray-600">Credits: ${course.credits} | Grade: ${gradePointToLetter[course.gradePoint]}</p>
+                            </div>
+                            <button data-index="${index}" class="remove-btn text-red-500 hover:text-red-700 font-semibold transition-colors">&times;</button>
+                        `;
+                        courseListDiv.appendChild(courseElement);
+                    });
+                }
+            }
+
+            /**
+             * Calculates the GPA based on the current list of courses.
+             */
+            function calculateGPA() {
+                if (courses.length === 0) {
+                    gpaResultDiv.textContent = '0.00';
+                    return;
+                }
+
+                let totalQualityPoints = 0;
+                let totalCredits = 0;
+
+                courses.forEach(course => {
+                    totalQualityPoints += parseFloat(course.gradePoint) * parseFloat(course.credits);
+                    totalCredits += parseFloat(course.credits);
+                });
+
+                const gpa = totalCredits === 0 ? 0 : totalQualityPoints / totalCredits;
+                gpaResultDiv.textContent = gpa.toFixed(2);
+                gpaResultDiv.classList.add('gpa-result-animation');
+                // Remove animation class after it finishes to allow re-triggering
+                setTimeout(() => gpaResultDiv.classList.remove('gpa-result-animation'), 500);
+            }
+            
+            /**
+             * Resets the entire calculator to its initial state.
+             */
+            function resetCalculator() {
+                courses = [];
+                courseForm.reset();
+                errorMessageDiv.textContent = '';
+                renderCourses();
+                calculateGPA();
+            }
+
+            // --- Event Listeners ---
+
+            /**
+             * Handles the form submission to add a new course.
+             */
+            courseForm.addEventListener('submit', (e) => {
+                e.preventDefault(); // Prevent page reload
+
+                const name = courseNameInput.value.trim();
+                const credits = creditsInput.value;
+                const gradePoint = gradeSelect.value;
+                
+                // --- Input Validation ---
+                if (!name || !credits || credits <= 0) {
+                    errorMessageDiv.textContent = 'Please enter a valid course name and positive credits.';
+                    return;
+                }
+                errorMessageDiv.textContent = '';
+
+                // Add course to the array
+                courses.push({ name, credits, gradePoint });
+
+                // Update UI
+                renderCourses();
+                calculateGPA();
+
+                // Reset form fields
+                courseForm.reset();
+                courseNameInput.focus();
+            });
+
+            /**
+             * Handles clicks on the course list for removing courses (Event Delegation).
+             */
+            courseListDiv.addEventListener('click', (e) => {
+                if (e.target.classList.contains('remove-btn')) {
+                    const indexToRemove = parseInt(e.target.getAttribute('data-index'), 10);
+                    courses.splice(indexToRemove, 1); // Remove course from array
+                    renderCourses();
+                    calculateGPA();
+                }
+            });
+            
+            /**
+             * Handles click on the reset button.
+             */
+            resetBtn.addEventListener('click', resetCalculator);
+
+            // --- Initial Render ---
+            renderCourses();
+        });
+    </script>
+</body>
+</html>
